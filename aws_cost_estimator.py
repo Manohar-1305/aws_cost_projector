@@ -1,5 +1,4 @@
 import json
-
 import boto3
 import time
 from botocore.exceptions import ClientError
@@ -41,7 +40,6 @@ def create_sns_topic_and_subscribe():
 
     return topic_arn
 
-
 def generate_html_report(costs):
     html_content = f"""
     <!DOCTYPE html>
@@ -49,7 +47,7 @@ def generate_html_report(costs):
     <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AWS Daily Cost Report</title>
+    <title>Monthly Cost Estimation Report</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, sans-serif;
@@ -142,7 +140,7 @@ def generate_html_report(costs):
     </head>
     <body>
     <div class="report-container">
-        <h1>AWS Daily Cost Report</h1>
+        <h1>AWS Monthly Cost Estimator Report</h1>
 
         <div class="section">
             <h2>EC2</h2>
@@ -299,4 +297,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
