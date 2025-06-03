@@ -1,17 +1,18 @@
+import json
+
 import boto3
 import time
-import json
 from botocore.exceptions import ClientError
-from price_api import get_total_cost  # Your custom module
+from price_api import get_total_cost  # Your cost fetching function
 
 # AWS clients
 sns_client = boto3.client('sns', region_name='ap-south-1')
 s3_client = boto3.client('s3', region_name='ap-south-1')
 
-# Configurations
+# Configuration
 topic_name = 'Cost_Estimator_Bot'
-email_endpoint = 'tradingcontentdrive@gmail.com'  # Change to your email
-s3_bucket = 'invoicegeneratorbucket'  # Change to your bucket name
+email_endpoint = 'tradingcontentdrive@gmail.com'  # Replace with your email
+s3_bucket = 'invoicegeneratorbucket'              # Replace with your bucket name
 s3_key = 'reports/aws_daily_cost_report.html'
 local_html_file = 'aws_daily_cost_report.html'
 
@@ -145,25 +146,35 @@ def generate_html_report(costs):
 
         <div class="section">
             <h2>EC2</h2>
-            <div class="cost-item"><span class="label">Hourly:</span><span class="value">${costs['ec2_hourly']:.3f}</span></div>
-            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs['ec2_monthly']:.2f}</span></div>
+            <div class="cost-item"><span class="label">Hourly:</span><span class="value">${costs.get('ec2_hourly', 0.0):.3f}</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs.get('ec2_monthly', 0.0):.2f}</span></div>
         </div>
 
         <div class="section">
             <h2>S3</h2>
-            <div class="cost-item"><span class="label">Size:</span><span class="value">{costs['s3_size']:.5f} GB</span></div>
-            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs['s3_monthly']:.2f}</span></div>
+            <div class="cost-item"><span class="label">Size:</span><span class="value">{costs.get('s3_size', 0.0):.5f} GB</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs.get('s3_monthly', 0.0):.2f}</span></div>
         </div>
 
         <div class="section">
             <h2>RDS</h2>
-            <div class="cost-item"><span class="label">Hourly:</span><span class="value">${costs['rds_hourly']:.2f}</span></div>
-            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs['rds_monthly']:.2f}</span></div>
+            <div class="cost-item"><span class="label">Hourly:</span><span class="value">${costs.get('rds_hourly', 0.0):.2f}</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs.get('rds_monthly', 0.0):.2f}</span></div>
+        </div>
+
+        <div class="section">
+            <h2>EBS</h2>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs.get('ebs_monthly', 0.0):.2f}</span></div>
+        </div>
+
+        <div class="section">
+            <h2>Route 53</h2>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">${costs.get('route53_monthly', 0.0):.2f}</span></div>
         </div>
 
         <div class="section total">
-            <div class="cost-item"><span class="label">Total Hourly:</span><span class="value">${costs['total_hourly']:.2f}</span></div>
-            <div class="cost-item"><span class="label">Total Monthly:</span><span class="value">${costs['total_monthly']:.2f}</span></div>
+            <div class="cost-item"><span class="label">Total Hourly:</span><span class="value">${costs.get('total_hourly', 0.0):.2f}</span></div>
+            <div class="cost-item"><span class="label">Total Monthly:</span><span class="value">${costs.get('total_monthly', 0.0):.2f}</span></div>
         </div>
     </div>
     </body>
@@ -178,98 +189,114 @@ def upload_html_to_s3():
             Filename=local_html_file,
             Bucket=s3_bucket,
             Key=s3_key,
-            ExtraArgs={'ACL': 'bucket-owner-full-control'}  # Might cause AccessControlListNotSupported error if bucket ACLs are disabled
+            ExtraArgs={'ACL': 'bucket-owner-full-control', 'ContentType': 'text/html'}
         )
         print(f"HTML report uploaded to s3://{s3_bucket}/{s3_key}")
         return True
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code == 'AccessControlListNotSupported':
-            print(f"Failed to upload HTML to S3 with ACL. Trying without ACL...")
+            print(f"Failed to upload HTML with ACL. Trying without ACL...")
             try:
                 s3_client.upload_file(
                     Filename=local_html_file,
                     Bucket=s3_bucket,
-                    Key=s3_key
+                    Key=s3_key,
+                    ExtraArgs={'ContentType': 'text/html'}
                 )
                 print(f"HTML report uploaded to s3://{s3_bucket}/{s3_key} (without ACL)")
                 return True
             except Exception as ex:
-                print(f"Failed to upload without ACL as well: {ex}")
+                print(f"Failed without ACL as well: {ex}")
                 return False
         else:
-            print(f"Failed to upload HTML to S3: {e}")
+            print(f"Failed to upload HTML: {e}")
             return False
     except Exception as e:
         print(f"Unexpected error during S3 upload: {e}")
         return False
 
 
-def publish_sns_html(topic_arn, download_link=None):
-    # Option 2 message description with download link if available
-    if download_link:
-        message_body = f"""
-AWS Cost Explorer Report Update:
+def generate_presigned_url(download=False):
+    params = {'Bucket': s3_bucket, 'Key': s3_key}
+    if download:
+        # Force download by setting Content-Disposition header
+        params['ResponseContentDisposition'] = 'attachment; filename="AWS_Daily_Cost_Report.html"'
+    try:
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params=params,
+            ExpiresIn=3600  # 1 hour expiration
+        )
+        return url
+    except ClientError as e:
+        print(f"Error generating presigned URL: {e}")
+        return None
 
-Your daily AWS cost report has been generated and is available at the following link.
-This report includes EC2, S3, RDS costs, and a total summary for your account.
 
-Click below to view the full report:
-{download_link}
-"""
-    else:
-        message_body = """
-AWS Cost Explorer Report Update:
-
-Your daily AWS cost report has been generated.
-However, the report upload failed and the download link is unavailable.
-"""
-
-    sns_client.publish(
-        TopicArn=topic_arn,
-        Message=message_body,
-        Subject="AWS Daily Cost Report"
+def publish_sns_html(topic_arn, url_view, url_download):
+    message = (
+        f"Hello!\n\n"
+        f"Your daily AWS cost report has been generated and is available at the following link"
+        f"This report includes EC2, S3, RDS, EBS, and Route 53 costs, along with a total summary for your account."
+        f"Your AWS Daily Cost/Monthly Report is ready.\n\n"
+        f"View it in your browser:\n{url_view}\n\n"
+        f"Download it as HTML file:\n{url_download}\n\n"
+        f"Thanks for using AWS Cost Estimator Bot."
     )
-    print("Email with report link sent via SNS.")
+    subject = "AWS Cost Report Notification"
+    try:
+        sns_client.publish(TopicArn=topic_arn, Message=message, Subject=subject)
+        print("Notification email sent with report URLs.")
+    except Exception as e:
+        print(f"Failed to send SNS notification: {e}")
 
 
 def main():
     topic_arn = create_sns_topic_and_subscribe()
 
-    # Get costs from your custom module
-    costs = get_total_cost()
+    costs = get_total_cost()  # Your function to fetch cost data
 
-    print("\n=== AWS Daily Cost Report Preview ===")
-    print(f"EC2 Hourly Cost: ${costs['ec2_hourly']:.3f}")
-    print(f"EC2 Monthly Cost: ${costs['ec2_monthly']:.2f}")
-    print(f"S3 Total Size (GB): {costs['s3_size']:.5f}")
-    print(f"S3 Monthly Cost: ${costs['s3_monthly']:.2f}")
-    print(f"RDS Hourly Cost: ${costs['rds_hourly']:.2f}")
-    print(f"RDS Monthly Cost: ${costs['rds_monthly']:.2f}")
-    print(f"Total Hourly Cost: ${costs['total_hourly']:.2f}")
-    print(f"Total Monthly Cost: ${costs['total_monthly']:.2f}")
-    print("=== End of Report ===\n")
+    # Print costs for debug
+    print(f"EC2 Hourly: ${costs.get('ec2_hourly', 0.0):.3f}")
+    print(f"EC2 Monthly: ${costs.get('ec2_monthly', 0.0):.2f}")
+    print(f"S3 Size: {costs.get('s3_size', 0.0):.5f} GB")
+    print(f"S3 Monthly: ${costs.get('s3_monthly', 0.0):.2f}")
+    print(f"RDS Hourly: ${costs.get('rds_hourly', 0.0):.2f}")
+    print(f"RDS Monthly: ${costs.get('rds_monthly', 0.0):.2f}")
+    print(f"EBS Monthly: ${costs.get('ebs_monthly', 0.0):.2f}")
+    print(f"Route53 Monthly: ${costs.get('route53_monthly', 0.0):.2f}")
+    print(f"Total Hourly: ${costs.get('total_hourly', 0.0):.2f}")
+    print(f"Total Monthly: ${costs.get('total_monthly', 0.0):.2f}")
 
-    # Generate HTML
     html_report = generate_html_report(costs)
 
-    # Save locally
-    with open(local_html_file, "w") as f:
+    # Save HTML locally
+    with open(local_html_file, 'w', encoding='utf-8') as f:
         f.write(html_report)
-    print(f"HTML report saved locally as '{local_html_file}'")
+    print(f"HTML report saved locally as {local_html_file}")
 
     # Upload to S3
-    upload_success = upload_html_to_s3()
+    if not upload_html_to_s3():
+        print("Upload failed, aborting.")
+        return
 
-    download_link = None
-    if upload_success:
-        download_link = f"https://{s3_bucket}.s3.ap-south-1.amazonaws.com/{s3_key}"
-    else:
-        print("Skipping download link in email due to upload failure.")
+    # Generate presigned URLs
+    url_view = generate_presigned_url(download=False)  # For browser viewing
+    url_download = generate_presigned_url(download=True)  # For download
 
-    # Send SNS email with description and link (if any)
-    publish_sns_html(topic_arn, download_link)
+    if not url_view or not url_download:
+        print("Failed to generate presigned URLs, aborting.")
+        return
+
+    # Send SNS notification with URLs
+    publish_sns_html(topic_arn, url_view, url_download)
+
+    # Print the view URL so you can open it directly in a browser
+    print("\nOpen this link in your browser to view the report:")
+    print(url_view)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+
