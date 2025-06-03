@@ -47,7 +47,7 @@ def generate_html_report(costs):
     <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Monthly Cost Estimation Report</title>
+    <title>AWS Monthly Cost Estimation Report</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, sans-serif;
