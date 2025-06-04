@@ -1,0 +1,137 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AWS Monthly Cost Estimation Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(120deg, #a1c4fd, #c2e9fb);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .report-container {
+            background: #fff;
+            width: 90%;
+            max-width: 700px;
+            border-radius: 16px;
+            padding: 30px 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: fadeIn 1s ease;
+        }
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #ff7eb3, #ff758c, #ff7eb3);
+            background-size: 200% auto;
+            color: transparent;
+            background-clip: text;
+            -webkit-background-clip: text;
+            animation: shimmer 4s linear infinite;
+            white-space: nowrap;
+        }
+        .section {
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #fdfbfb, #ebedee);
+            border-left: 6px solid #6366f1;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .section h2 {
+            font-size: 1.4rem;
+            color: #4f46e5;
+            margin-bottom: 15px;
+        }
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px dashed #ccc;
+        }
+        .cost-item:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .value {
+            font-weight: 700;
+            color: #dc2626;
+        }
+        .total {
+            background: #fef08a;
+            border: 2px dashed #facc15;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .total .label {
+            color: #92400e;
+        }
+        .total .value {
+            color: #b45309;
+        }
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 620px) {
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+    </head>
+    <body>
+    <div class="report-container">
+        <h1>AWS Monthly Cost Estimator Report</h1>
+
+        <div class="section">
+            <h2>EC2</h2>
+            <div class="cost-item"><span class="label">Hourly:</span><span class="value">$0.000</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+
+        <div class="section">
+            <h2>S3</h2>
+            <div class="cost-item"><span class="label">Size:</span><span class="value">0.05244 GB</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+
+        <div class="section">
+            <h2>RDS</h2>
+            <div class="cost-item"><span class="label">Hourly:</span><span class="value">$0.00</span></div>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+
+        <div class="section">
+            <h2>EBS</h2>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+
+        <div class="section">
+            <h2>Route 53</h2>
+            <div class="cost-item"><span class="label">Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+
+        <div class="section total">
+            <div class="cost-item"><span class="label">Total Hourly:</span><span class="value">$0.00</span></div>
+            <div class="cost-item"><span class="label">Total Monthly:</span><span class="value">$0.00</span></div>
+        </div>
+    </div>
+    </body>
+    </html>
+    
